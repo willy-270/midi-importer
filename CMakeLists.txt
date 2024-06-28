@@ -8,13 +8,15 @@ project(midiimporter VERSION 1.0.0)
 
 # Set up the mod binary
 add_library(${PROJECT_NAME} SHARED
-    src/main.cpp
     src/midifile/src/Binasc.cpp
     src/midifile/src/MidiEvent.cpp
     src/midifile/src/MidiEventList.cpp
     src/midifile/src/MidiFile.cpp
     src/midifile/src/MidiMessage.cpp
-    src/color_stuff/colors.cpp
+    src/color_generator/colors.cpp
+    src/ui/MainButton.cpp
+    src/ui/MainPopup/MainPopup.cpp
+    src/main.cpp
 )
 
 if (NOT DEFINED ENV{GEODE_SDK})

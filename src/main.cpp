@@ -4,51 +4,42 @@
 #include <Geode/modify/LevelEditorLayer.hpp>
 
 #include "midifile/include/MidiFile.h"
-
-#include "color_stuff/colors.h"
+#include "color_generator/colors.hpp"
+#include "main.h"
 
 #include <vector>
+#include <map>
 
 using namespace geode::prelude;
 using namespace smf;
 
-float halfSpeedUps = 8.37188 * 30;
-float oneSpeedUps = 10.3860833 * 30;
-float twoSpeedUps = 12.914 * 30;
-float threeSpeedUps = 15.6 * 30; 
-float fourSpeedUps = 19.2 * 30; 
+const float speedMultipliers[] = {
+    8.37188 * 30,
+    10.3860833 * 30,
+    12.914 * 30,
+    15.6 * 30,
+    19.2 * 30
+};
 
-std::vector<std::vector<double>> getTrackAttacks(std::string filePath) {
-    std::vector<std::vector<double>> tracks;
-    MidiFile midifile;
-    
-    midifile.read(filePath);
-    if (!midifile.status()) {
-        log::debug("Error reading MIDI file");
+int getSpeedInt(GameObject* obj) {
+    switch (obj->m_objectID) {
+        case 200: return 0;
+        case 201: return 1;
+        case 202: return 2;
+        case 203: return 3;
+        case 1334: return 4;
     }
-
-    int track = 0;
-    for (int track=0; track  <midifile.getTrackCount(); track++) {
-        std::vector<double> trackAttacksSeconds;
-        for (int event=0; event<midifile[track].size(); event++) {
-            if (!midifile[track][event].isNoteOn()) {
-                continue;
-            }
-            if (trackAttacksSeconds.empty() || trackAttacksSeconds.back() != midifile[track][event].tick) {
-                trackAttacksSeconds.push_back(midifile.getTimeInSeconds(midifile[track][event].tick));
-            }
-        }
-        tracks.push_back(trackAttacksSeconds);
-    }
-    
-    return tracks;
+    return -1;
 }
 
-bool firstFrame = true;
-std::vector<std::vector<double>> tracks;
-std::string midiFilePath = "";
+std::vector<std::vector<double>> tracks; //exposed in main.h
+float offset; //exposed in main.h
 
-class $modify(DrawGridLayer) {	
+class $modify(mDrawGridLayer, DrawGridLayer) {    
+    struct Fields {
+        std::vector<Ref<GameObject>> speedPortals;
+    };
+
     void draw() {
         DrawGridLayer::draw();
 
@@ -56,59 +47,79 @@ class $modify(DrawGridLayer) {
 
         for (int i = 0; i < tracks.size(); i++) {
             for (int j = 0; j < tracks[i].size(); j++) {
-                float xPos = tracks[i][j] * fourSpeedUps;
+                float time = tracks[i][j] + offset;
+                float xPos = getXPosition(time);
                 ccDrawColor4B(std::get<0>(colors[i]), std::get<1>(colors[i]), std::get<2>(colors[i]), std::get<3>(colors[i]));
                 ccDrawLine(ccp(xPos, 0), ccp(xPos, 30000));
             }
         }
-
-        if (firstFrame && midiFilePath != "") {
-            tracks = getTrackAttacks(midiFilePath);
-            firstFrame = false;
-        }
-	}
-};
-
-class $modify(mLevelEditorLayer, LevelEditorLayer) {
-    void onClick(CCObject* sender) {
-        utils::file::FilePickOptions::Filter filter = {
-            "MIDI Files",
-            { "*.mid", "*.midi" }
-        };
-        utils::file::FilePickOptions options = {
-            .filters = { filter }
-        };
-
-        utils::file::pick(utils::file::PickMode::OpenFile, options
-        ).listen(
-            [](Result<std::filesystem::path>* result) {
-                if(!result->isOk()) {
-                    return;
-                }
-
-                std::filesystem::path path = result->unwrap();
-                midiFilePath = path.string();
-            }
-        );
     }
 
-    bool init(GJGameLevel* p0, bool p1) {
-        if (!LevelEditorLayer::init(p0, p1)) {
-            return false;
+    //shoutout to chatgpt
+    float getXPosition(float time) {
+        float xPos = 0.0f;
+        float lastTime = 0.0f;
+        float lastXPos = 0.0f;
+        int currentSpeedType = getStartSpeedInt();
+
+        for (const auto& portal : m_fields->speedPortals) {
+            float changePos = portal->getPositionX();
+            int speedType = getSpeedInt(portal);
+
+            float changeTime = (changePos - lastXPos) / speedMultipliers[currentSpeedType];
+
+            if (time < lastTime + changeTime) {
+                xPos = lastXPos + (time - lastTime) * speedMultipliers[currentSpeedType];
+                return xPos;
+            }
+
+            lastXPos = changePos;
+            lastTime += changeTime;
+            currentSpeedType = speedType;
         }
 
-		auto menu = CCMenu::create();
-		auto spr = ButtonSprite::create("MIDI");
-        auto btn = CCMenuItemSpriteExtra::create(
-            spr,
-            this,
-            menu_selector(mLevelEditorLayer::onClick)
-        );
-		menu->addChild(btn);
-		this->addChild(menu, 1000);
-		btn->setPosition(-195.f, -70.f);
+        xPos = lastXPos + (time - lastTime) * speedMultipliers[currentSpeedType];
+        return xPos;
+    }
 
-		return true;
+    int getStartSpeedInt() {
+        Speed speed = this->m_editorLayer->m_levelSettings->m_startSpeed;
+        switch (speed) {
+            case Speed::Slow: return 0;
+            case Speed::Normal: return 1;
+            case Speed::Fast: return 2;
+            case Speed::Faster: return 3;
+            case Speed::Fastest: return 4;
+        }
+        return -1;
+    }
+};
+
+class $modify(LevelEditorLayer) {
+    void addSpecial(GameObject* obj) {
+        LevelEditorLayer::addSpecial(obj);
+
+        if (obj->m_objectID == 200 || obj->m_objectID == 201 || obj->m_objectID == 202 || obj->m_objectID == 203 || obj->m_objectID == 1334) {
+            auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->speedPortals;
+            speedPortals.push_back(obj);
+            
+            std::sort(speedPortals.begin(), speedPortals.end(), [](const Ref<GameObject>& obj1, const Ref<GameObject>& obj2) {
+                return obj1->getPositionX() < obj2->getPositionX();
+            });
+        }
+    }
+
+    void removeSpecial(GameObject* obj) {
+        LevelEditorLayer::removeSpecial(obj);
+
+        if (obj->m_objectID == 200 || obj->m_objectID == 201 || obj->m_objectID == 202 || obj->m_objectID == 203 || obj->m_objectID == 1334) {
+            auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->speedPortals;
+            speedPortals.erase(std::remove(speedPortals.begin(), speedPortals.end(), obj), speedPortals.end());
+
+            std::sort(speedPortals.begin(), speedPortals.end(), [](const Ref<GameObject>& obj1, const Ref<GameObject>& obj2) {
+                return obj1->getPositionX() < obj2->getPositionX();
+            });
+        }
     }
 };
 

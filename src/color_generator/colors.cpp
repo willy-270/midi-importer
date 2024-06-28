@@ -2,7 +2,6 @@
 #include <cmath>
 #include <tuple>
 
-// Function to generate n distinct RGB colors
 std::vector<std::tuple<int, int, int, int>> generateColors(int n) {
     auto HSVtoRGB = [](float h, float s, float v, int &r, int &g, int &b) {
         float p, q, t, f;
