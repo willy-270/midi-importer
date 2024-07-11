@@ -16,6 +16,7 @@ add_library(${PROJECT_NAME} SHARED
     src/color_generator/colors.cpp
     src/ui/MainButton.cpp
     src/ui/MainPopup/MainPopup.cpp
+    src/ui/MainPopup/SettingsPopup/SettingsPopup.cpp
     src/main.cpp
 )
 

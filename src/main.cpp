@@ -5,7 +5,7 @@
 
 #include "midifile/include/MidiFile.h"
 #include "color_generator/colors.hpp"
-#include "main.h"
+#include "main.hpp"
 
 #include <vector>
 #include <map>
@@ -32,22 +32,27 @@ int getSpeedInt(GameObject* obj) {
     return -1;
 }
 
-std::vector<std::vector<double>> tracks; //exposed in main.h
-float offset; //exposed in main.h
+// vector of tracks, where each track is a std::pair<bool, std::vector<double>>
+// bool represents if track should be visable, the vector<double> contains the times of the notes
+std::vector<std::pair<bool, std::vector<double>>> tracks;
+float offset; 
 
 class $modify(mDrawGridLayer, DrawGridLayer) {    
     struct Fields {
         std::vector<Ref<GameObject>> speedPortals;
     };
 
+    $override
     void draw() {
         DrawGridLayer::draw();
 
         std::vector<std::tuple<int, int, int, int>> colors = generateColors(tracks.size());
 
         for (int i = 0; i < tracks.size(); i++) {
-            for (int j = 0; j < tracks[i].size(); j++) {
-                float time = tracks[i][j] + offset;
+            for (int j = 0; j < tracks[i].second.size(); j++) {
+                if (tracks[i].first == false) continue;
+                
+                float time = tracks[i].second[j] + offset;
                 float xPos = getXPosition(time);
                 ccDrawColor4B(std::get<0>(colors[i]), std::get<1>(colors[i]), std::get<2>(colors[i]), std::get<3>(colors[i]));
                 ccDrawLine(ccp(xPos, 0), ccp(xPos, 30000));
@@ -96,6 +101,7 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
 };
 
 class $modify(LevelEditorLayer) {
+    $override
     void addSpecial(GameObject* obj) {
         LevelEditorLayer::addSpecial(obj);
 
@@ -109,6 +115,7 @@ class $modify(LevelEditorLayer) {
         }
     }
 
+    $override
     void removeSpecial(GameObject* obj) {
         LevelEditorLayer::removeSpecial(obj);
 

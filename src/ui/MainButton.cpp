@@ -5,6 +5,8 @@
 
 using namespace geode::prelude;
 
+MainPopup* mainPopup;
+
 class $modify(mLevelEditorLayer, LevelEditorLayer) {
     bool init(GJGameLevel* p0, bool p1) {
         if (!LevelEditorLayer::init(p0, p1)) {
@@ -26,7 +28,7 @@ class $modify(mLevelEditorLayer, LevelEditorLayer) {
     }
 
     void onClick(CCObject* sender) {
-        auto popup = MainPopup::create();
-        popup->show();
+        mainPopup = MainPopup::create();
+        mainPopup->show();
     }
 };
