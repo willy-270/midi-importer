@@ -37,7 +37,6 @@ class $modify(mEditorUI, EditorUI) {
     }
 
     void onClick(CCObject* sender) {
-        log::debug("Clicked MIDI button");
         mainPopup = MainPopup::create();
         mainPopup->show();
     }

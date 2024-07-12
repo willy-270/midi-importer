@@ -1,4 +1,5 @@
 #include <Geode/modify/EditorPauseLayer.hpp>
+#include <Geode/modify/EditLevelLayer.hpp>
 #include <Geode/Geode.hpp>
 #include <cvolton.level-id-api/include/EditorIDs.hpp>
 
@@ -8,18 +9,26 @@
 using json = nlohmann::json;
 using namespace geode::prelude;
 
-class $modify(mEditorPauseLayer, EditorPauseLayer) {
+std::filesystem::path getLevelJsonPath(GJGameLevel* level) {
+    int levelId = EditorIDs::getID(level);
+    std::filesystem::path saveDir = Mod::get()->getSaveDir();
+    std::filesystem::path levelJsonPath = saveDir / (std::to_string(levelId) + ".json");
+
+    return levelJsonPath;
+}
+
+class $modify(EditorPauseLayer) {
     $override
     void saveLevel() {
         EditorPauseLayer::saveLevel();
 
-        int levelId = EditorIDs::getID(this->m_editorLayer->m_level);
+        if (currentMidiData.tracks.empty()) {
+            return;
+        }
+        
+        json levelJson = makeLevelJson();
 
-        json levelJson = getLevelJson();
-
-        std::filesystem::path saveDir = Mod::get()->getSaveDir();
-        log::debug("Save dir: {}", saveDir.string());
-        std::filesystem::path levelJsonPath = saveDir / (std::to_string(levelId) + ".json");
+        std::filesystem::path levelJsonPath = getLevelJsonPath(this->m_editorLayer->m_level);
 
         if (!std::filesystem::exists(levelJsonPath)) {
             std::ofstream file(levelJsonPath);
@@ -40,7 +49,7 @@ class $modify(mEditorPauseLayer, EditorPauseLayer) {
         return existingJson == newJson;
     }
 
-    json getLevelJson() { 
+    json makeLevelJson() {
         json levelJson;
 
         levelJson["offset"] = currentMidiData.offset;
@@ -64,6 +73,19 @@ class $modify(mEditorPauseLayer, EditorPauseLayer) {
         levelJson["tracks"] = tracksJson;
 
         return levelJson;
+    }
+};
+
+class $modify(EditLevelLayer) {
+    $override 
+    void confirmDelete(CCObject* p0) {
+        EditLevelLayer::confirmDelete(p0);
+
+        std::filesystem::path levelJsonPath = getLevelJsonPath(this->m_level);
+
+        if (std::filesystem::exists(levelJsonPath)) {
+            std::filesystem::remove(levelJsonPath);
+        }
     }
 };
 

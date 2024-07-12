@@ -58,8 +58,6 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
 
     void loadDataFromJson() {
         currentMidiData = LevelMidiData();
-        currentMidiData.offset = 0.0f;
-        currentMidiData.fileName = "";
         xPosCache.clear();
 
         std::filesystem::path levelJsonPath = Mod::get()->getSaveDir() / (std::to_string(EditorIDs::getID(this->m_editorLayer->m_level)) + ".json");
@@ -172,8 +170,6 @@ void sortSpeedPortals(std::vector<Ref<GameObject>>& portals) {
 class $modify(LevelEditorLayer) {
     $override
     void addSpecial(GameObject* obj) {
-        log::debug("Adding special object");
-
         LevelEditorLayer::addSpecial(obj);
 
         if (isSpeedPortal(obj)) {
