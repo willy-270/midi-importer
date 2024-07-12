@@ -8,7 +8,7 @@
 #include "../../MainButton.hpp"
 #include "../../../color_generator/colors.hpp"
 
-std::vector<CCMenuItemToggler*> btns; //this wont work in the class feilds for some reason caused an hour of confusion !!!!!!!!!
+std::vector<CCMenuItemToggler*> btns; //rly weird behaviour when in class fields
 
 bool SettingsPopup::setup(std::string const& value) {
     btns.clear();
@@ -25,6 +25,8 @@ bool SettingsPopup::setup(std::string const& value) {
         m_mainLayer->addChild(menu);
         return true;
     }
+
+    //thanks betteredit repo
 
     auto scroll = ScrollLayer::create(ccp(320, 200));
     scroll->setAnchorPoint(ccp(0, 0));

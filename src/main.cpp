@@ -12,6 +12,7 @@
 
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 using namespace geode::prelude;
 using namespace smf;
@@ -33,6 +34,14 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
             15.6 * 30,
             19.2 * 30
         };
+
+        const float m_portalXOffsets[5] = {
+            17.5,
+            17,
+            25.5,
+            32.5,
+            34.5
+        };
     };
 
     $override
@@ -40,7 +49,6 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
         DrawGridLayer::draw();
 
         if (m_fields->m_firstFrame) {
-
             loadDataFromJson();
             m_fields->m_firstFrame = false;
         }
@@ -78,10 +86,10 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
         std::vector<std::tuple<int, int, int, int>> colors = generateColors(currentMidiData.tracks.size());
 
         for (int i = 0; i < currentMidiData.tracks.size(); i++) {
-            for (int j = 0; j < currentMidiData.tracks[i].noteAttacks.size(); j++) {
-                if (currentMidiData.tracks[i].visible == false) continue;
-                
-                float time = currentMidiData.tracks[i].noteAttacks[j] + currentMidiData.offset;
+            if (!currentMidiData.tracks[i].visible) continue;
+            
+            for (double noteAttack : currentMidiData.tracks[i].noteAttacks) {
+                float time = noteAttack + currentMidiData.offset;
                 float xPos = getXPosition(time);
                 ccDrawColor4B(
                     std::get<0>(colors[i]), 
@@ -97,19 +105,18 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
     float getXPosition(float time) {
         int currentSpeedType = getStartSpeedInt();
 
-        if (xPosCache.find(time) != xPosCache.end() && currentSpeedType == cachedStartSpeed) {
-            return xPosCache[time];
+        auto cacheIt = xPosCache.find(time);
+        if (cacheIt != xPosCache.end() && currentSpeedType == cachedStartSpeed) {
+            return cacheIt->second;
         }
-
-        xPosCache.clear();
 
         cachedStartSpeed = currentSpeedType;
         float lastTime = 0.0f;
         float lastXPos = 0.0f;
 
         for (const auto& portal : m_fields->m_speedPortals) {
-            float changePos = portal->getPositionX();
             int speedType = getSpeedInt(portal);
+            float changePos = portal->getPositionX() - m_fields->m_portalXOffsets[speedType];
 
             float changeTime = (changePos - lastXPos) / m_fields->m_speedMultipliers[currentSpeedType];
             if (time < lastTime + changeTime) {
@@ -156,9 +163,17 @@ bool isSpeedPortal(GameObject* obj) {
     return obj->m_objectID == 200 || obj->m_objectID == 201 || obj->m_objectID == 202 || obj->m_objectID == 203 || obj->m_objectID == 1334;
 }
 
+void sortSpeedPortals(std::vector<Ref<GameObject>>& portals) {
+    std::sort(portals.begin(), portals.end(), [](const Ref<GameObject>& obj1, const Ref<GameObject>& obj2) {
+        return obj1->getPositionX() < obj2->getPositionX();
+    });
+}
+
 class $modify(LevelEditorLayer) {
     $override
     void addSpecial(GameObject* obj) {
+        log::debug("Adding special object");
+
         LevelEditorLayer::addSpecial(obj);
 
         if (isSpeedPortal(obj)) {
@@ -180,12 +195,6 @@ class $modify(LevelEditorLayer) {
             xPosCache.clear();
         }
     }
-
-    void sortSpeedPortals(std::vector<Ref<GameObject>>& portals) {
-        std::sort(portals.begin(), portals.end(), [](const Ref<GameObject>& obj1, const Ref<GameObject>& obj2) {
-            return obj1->getPositionX() < obj2->getPositionX();
-        });
-    }
 };
 
 class $modify(EditorUI) {
@@ -194,6 +203,8 @@ class $modify(EditorUI) {
         EditorUI::moveObject(p0, p1);
 
         if (isSpeedPortal(p0)) {
+            auto& speedPortals = static_cast<mDrawGridLayer*>(this->m_editorLayer->m_drawGridLayer)->m_fields->m_speedPortals;
+            sortSpeedPortals(speedPortals);
             xPosCache.clear();    
         }
     }
