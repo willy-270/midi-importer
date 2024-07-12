@@ -1,5 +1,5 @@
 #include <Geode/Geode.hpp>
-#include <Geode/modify/LevelEditorLayer.hpp>
+#include <Geode/modify/EditorUI.hpp>
 
 #include "MainPopup/MainPopup.hpp"
 
@@ -7,27 +7,48 @@ using namespace geode::prelude;
 
 MainPopup* mainPopup;
 
-class $modify(mLevelEditorLayer, LevelEditorLayer) {
-    bool init(GJGameLevel* p0, bool p1) {
-        if (!LevelEditorLayer::init(p0, p1)) {
+//want this to be in LevelSettingsLayer but no init :(:(:(:(:((((
+class $modify(mEditorUI, EditorUI) {
+    struct Fields {
+        MainPopup* mainPopup;
+        CCMenuItemSpriteExtra* btn;
+    };
+
+    $override
+    bool init(LevelEditorLayer* editorLayer) {
+        if (!EditorUI::init(editorLayer)) {
             return false;
         }
 
 		auto menu = CCMenu::create();
 		auto spr = ButtonSprite::create("MIDI");
-        auto btn = CCMenuItemSpriteExtra::create(
+        spr->setScale(.4f);
+        m_fields->btn = CCMenuItemSpriteExtra::create(
             spr,
             this,
-            menu_selector(mLevelEditorLayer::onClick)
+            menu_selector(mEditorUI::onClick)
         );
-		menu->addChild(btn);
+		menu->addChild(m_fields->btn);
 		this->addChild(menu, 1000);
-		btn->setPosition(-195.f, -70.f);
+		m_fields->btn->setPosition(-260.f, -58.f);
 
 		return true;
     }
 
+    $override
+    void onPlaytest(CCObject* sender) {
+        EditorUI::onPlaytest(sender);
+        m_fields->btn->setVisible(!m_fields->btn->isVisible());
+    }
+
+    $override
+    void onStopPlaytest(CCObject* sender) {
+        EditorUI::onStopPlaytest(sender);
+        m_fields->btn->setVisible(true);
+    }
+
     void onClick(CCObject* sender) {
+        log::debug("Clicked MIDI button");
         mainPopup = MainPopup::create();
         mainPopup->show();
     }

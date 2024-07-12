@@ -1,5 +1,19 @@
-#include <vector>
+#ifndef MAIN_HPP
+#define MAIN_HPP
 
-extern std::vector<std::pair<bool, std::vector<double>>> tracks;
-extern float offset;
-//idk how else to do this
+struct LevelMidiData {
+    struct Track {
+        bool visible;
+        int trackNum;
+        std::string instrumentName;
+        std::vector<double> noteAttacks;
+    };
+    float offset;
+    std::string fileName;
+    std::vector<Track> tracks;
+};
+
+extern LevelMidiData currentMidiData;
+
+#endif
+

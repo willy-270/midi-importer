@@ -18,7 +18,7 @@ bool SettingsPopup::setup(std::string const& value) {
     mainPopup->setVisible(false);
     m_bgSprite->setOpacity(0);
 
-    if (tracks.empty()) {
+    if (currentMidiData.tracks.empty()) {
         auto label = CCLabelBMFont::create(" Open a midi file!", "bigFont.fnt");
         auto menu = CCMenu::create();
         menu->addChild(label);
@@ -36,10 +36,10 @@ bool SettingsPopup::setup(std::string const& value) {
 
     auto content = scroll->m_contentLayer;
 
-    int trackCount = tracks.size();
+    int trackCount = currentMidiData.tracks.size();
     content->setContentSize(ccp(320, 30 * (trackCount)));
 
-    std::vector<std::tuple<int, int, int, int>> colors = generateColors(tracks.size());
+    std::vector<std::tuple<int, int, int, int>> colors = generateColors(currentMidiData.tracks.size());
 
     for (int i = 0; i < trackCount; i++) {
         auto node = CCLayerColor::create();
@@ -54,9 +54,9 @@ bool SettingsPopup::setup(std::string const& value) {
         menu->ignoreAnchorPointForPosition(false);
         menu->setAnchorPoint(ccp(0, 0));
 
-        auto trackText = CCLabelBMFont::create(("Track " + std::to_string(i + 1)).c_str(), "bigFont.fnt");
+        auto trackText = CCLabelBMFont::create(("Track " + std::to_string(i + 1) + ": " + currentMidiData.tracks[i].instrumentName).c_str(), "bigFont.fnt");
         trackText->setAnchorPoint(ccp(0, 0.5f));
-        trackText->setScale(0.65f);
+        trackText->setScale(0.4f);
         trackText->setPosition(ccp(10, 15));
         trackText->setColor(ccc3(std::get<0>(colors[i]), std::get<1>(colors[i]), std::get<2>(colors[i])));
         menu->addChild(trackText);
@@ -65,7 +65,7 @@ bool SettingsPopup::setup(std::string const& value) {
         auto onSpr = CCSprite::createWithSpriteFrameName("GJ_checkOn_001.png");
 
         auto btn = CCMenuItemToggler::create(offSpr, onSpr, menu, menu_selector(SettingsPopup::onToggle));
-        btn->toggle(tracks[i].first);
+        btn->toggle(currentMidiData.tracks[i].visible);
         btn->setPosition(node->getContentSize().width - 20, 15);
         btn->setScale(0.8f);
         menu->addChild(btn);
@@ -75,11 +75,54 @@ bool SettingsPopup::setup(std::string const& value) {
         content->addChild(node);
     }
 
+    auto hideAllSpr = ButtonSprite::create("Hide All");
+    hideAllSpr->setScale(0.8f);
+    auto hideAllBtn = CCMenuItemSpriteExtra::create(
+        hideAllSpr,
+        this,
+        menu_selector(SettingsPopup::onHideAll)
+    );
+    hideAllBtn->setPosition(-80, -130);
+
+    auto showAllSpr = ButtonSprite::create("Show All");
+    showAllSpr->setScale(0.8f);
+    auto showAllBtn = CCMenuItemSpriteExtra::create(
+        showAllSpr,
+        this,
+        menu_selector(SettingsPopup::onShowAll)
+    );
+    showAllBtn->setPosition(80, -130);
+
+    auto menu = CCMenu::create();
+    menu->addChild(hideAllBtn);
+    menu->addChild(showAllBtn);
+
     scroll->moveToTop();
     m_mainLayer->addChild(scroll);
+    m_mainLayer->addChild(menu);
     handleTouchPriority(m_mainLayer);
 
     return true;
+}
+
+void SettingsPopup::onHideAll(CCObject* sender) {
+    for (auto btn : btns) {
+        btn->toggle(false);
+    }
+
+    for (auto& track : currentMidiData.tracks) {
+        track.visible = false;
+    }
+}
+
+void SettingsPopup::onShowAll(CCObject* sender) {
+    for (auto btn : btns) {
+        btn->toggle(true);
+    }
+
+    for (auto& track : currentMidiData.tracks) {
+        track.visible = true;
+    }
 }
 
 void SettingsPopup::onToggle(CCObject* sender) {
@@ -87,7 +130,7 @@ void SettingsPopup::onToggle(CCObject* sender) {
     
     for (int i = 0; i < btns.size(); i++) {
         if (btns[i] == btn) {
-            tracks[i].first = !btn->isToggled();
+            currentMidiData.tracks[i].visible = !btn->isToggled();
             break;
         }
     }

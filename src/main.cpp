@@ -2,8 +2,11 @@
 #include <Geode/loader/Event.hpp>
 #include <Geode/modify/DrawGridLayer.hpp>
 #include <Geode/modify/LevelEditorLayer.hpp>
+#include <Geode/modify/EditorUI.hpp>
+#include <cvolton.level-id-api/include/EditorIDs.hpp>
 
-#include "midifile/include/MidiFile.h"
+#include "external/midifile/include/MidiFile.h"
+#include "external/json.hpp"
 #include "color_generator/colors.hpp"
 #include "main.hpp"
 
@@ -12,69 +15,106 @@
 
 using namespace geode::prelude;
 using namespace smf;
+using json = nlohmann::json;
 
-const float speedMultipliers[] = {
-    8.37188 * 30,
-    10.3860833 * 30,
-    12.914 * 30,
-    15.6 * 30,
-    19.2 * 30
-};
+LevelMidiData currentMidiData; //extern
 
-int getSpeedInt(GameObject* obj) {
-    switch (obj->m_objectID) {
-        case 200: return 0;
-        case 201: return 1;
-        case 202: return 2;
-        case 203: return 3;
-        case 1334: return 4;
-    }
-    return -1;
-}
-
-// vector of tracks, where each track is a std::pair<bool, std::vector<double>>
-// bool represents if track should be visable, the vector<double> contains the times of the notes
-std::vector<std::pair<bool, std::vector<double>>> tracks;
-float offset; 
+std::unordered_map<double, float> xPosCache;
+int cachedStartSpeed;
 
 class $modify(mDrawGridLayer, DrawGridLayer) {    
     struct Fields {
-        std::vector<Ref<GameObject>> speedPortals;
+        std::vector<Ref<GameObject>> m_speedPortals;
+        bool m_firstFrame = true;
+        const float m_speedMultipliers[5] = {
+            8.37188 * 30,
+            10.3860833 * 30,
+            12.914 * 30,
+            15.6 * 30,
+            19.2 * 30
+        };
     };
 
     $override
     void draw() {
         DrawGridLayer::draw();
 
-        std::vector<std::tuple<int, int, int, int>> colors = generateColors(tracks.size());
+        if (m_fields->m_firstFrame) {
 
-        for (int i = 0; i < tracks.size(); i++) {
-            for (int j = 0; j < tracks[i].second.size(); j++) {
-                if (tracks[i].first == false) continue;
+            loadDataFromJson();
+            m_fields->m_firstFrame = false;
+        }
+
+        drawLines();
+    }
+
+    void loadDataFromJson() {
+        currentMidiData = LevelMidiData();
+        currentMidiData.offset = 0.0f;
+        currentMidiData.fileName = "";
+        xPosCache.clear();
+
+        std::filesystem::path levelJsonPath = Mod::get()->getSaveDir() / (std::to_string(EditorIDs::getID(this->m_editorLayer->m_level)) + ".json");
+
+        if (std::filesystem::exists(levelJsonPath)) {
+            std::ifstream file(levelJsonPath);
+            json levelJson;
+            file >> levelJson;
+
+            currentMidiData.offset = levelJson["offset"];
+            currentMidiData.fileName = levelJson["file-name"];
+            for (const auto& track : levelJson["tracks"]) {
+                LevelMidiData::Track newTrack;
+                newTrack.visible = track["visable"];
+                newTrack.trackNum = track["track-num"];
+                newTrack.instrumentName = track["instrument-name"];
+                newTrack.noteAttacks = std::vector<double>(track["note-attacks"].begin(), track["note-attacks"].end());
+                currentMidiData.tracks.push_back(newTrack);
+            }
+        }
+    }
+
+    void drawLines() {
+        std::vector<std::tuple<int, int, int, int>> colors = generateColors(currentMidiData.tracks.size());
+
+        for (int i = 0; i < currentMidiData.tracks.size(); i++) {
+            for (int j = 0; j < currentMidiData.tracks[i].noteAttacks.size(); j++) {
+                if (currentMidiData.tracks[i].visible == false) continue;
                 
-                float time = tracks[i].second[j] + offset;
+                float time = currentMidiData.tracks[i].noteAttacks[j] + currentMidiData.offset;
                 float xPos = getXPosition(time);
-                ccDrawColor4B(std::get<0>(colors[i]), std::get<1>(colors[i]), std::get<2>(colors[i]), std::get<3>(colors[i]));
+                ccDrawColor4B(
+                    std::get<0>(colors[i]), 
+                    std::get<1>(colors[i]), 
+                    std::get<2>(colors[i]),
+                    std::get<3>(colors[i])
+                );
                 ccDrawLine(ccp(xPos, 0), ccp(xPos, 30000));
             }
         }
     }
 
-    //shoutout to chatgpt
     float getXPosition(float time) {
-        float xPos = 0.0f;
-        float lastTime = 0.0f;
-        float lastXPos = 0.0f;
         int currentSpeedType = getStartSpeedInt();
 
-        for (const auto& portal : m_fields->speedPortals) {
+        if (xPosCache.find(time) != xPosCache.end() && currentSpeedType == cachedStartSpeed) {
+            return xPosCache[time];
+        }
+
+        xPosCache.clear();
+
+        cachedStartSpeed = currentSpeedType;
+        float lastTime = 0.0f;
+        float lastXPos = 0.0f;
+
+        for (const auto& portal : m_fields->m_speedPortals) {
             float changePos = portal->getPositionX();
             int speedType = getSpeedInt(portal);
 
-            float changeTime = (changePos - lastXPos) / speedMultipliers[currentSpeedType];
-
+            float changeTime = (changePos - lastXPos) / m_fields->m_speedMultipliers[currentSpeedType];
             if (time < lastTime + changeTime) {
-                xPos = lastXPos + (time - lastTime) * speedMultipliers[currentSpeedType];
+                float xPos = lastXPos + (time - lastTime) * m_fields->m_speedMultipliers[currentSpeedType];
+                xPosCache[time] = xPos;
                 return xPos;
             }
 
@@ -83,7 +123,8 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
             currentSpeedType = speedType;
         }
 
-        xPos = lastXPos + (time - lastTime) * speedMultipliers[currentSpeedType];
+        float xPos = lastXPos + (time - lastTime) * m_fields->m_speedMultipliers[currentSpeedType];
+        xPosCache[time] = xPos;
         return xPos;
     }
 
@@ -98,20 +139,33 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
         }
         return -1;
     }
+
+    int getSpeedInt(GameObject* obj) {
+        switch (obj->m_objectID) {
+            case 200: return 0;
+            case 201: return 1;
+            case 202: return 2;
+            case 203: return 3;
+            case 1334: return 4;
+        }
+        return -1;
+    }
 };
+
+bool isSpeedPortal(GameObject* obj) {
+    return obj->m_objectID == 200 || obj->m_objectID == 201 || obj->m_objectID == 202 || obj->m_objectID == 203 || obj->m_objectID == 1334;
+}
 
 class $modify(LevelEditorLayer) {
     $override
     void addSpecial(GameObject* obj) {
         LevelEditorLayer::addSpecial(obj);
 
-        if (obj->m_objectID == 200 || obj->m_objectID == 201 || obj->m_objectID == 202 || obj->m_objectID == 203 || obj->m_objectID == 1334) {
-            auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->speedPortals;
+        if (isSpeedPortal(obj)) {
+            auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->m_speedPortals;
             speedPortals.push_back(obj);
-            
-            std::sort(speedPortals.begin(), speedPortals.end(), [](const Ref<GameObject>& obj1, const Ref<GameObject>& obj2) {
-                return obj1->getPositionX() < obj2->getPositionX();
-            });
+            sortSpeedPortals(speedPortals);
+            xPosCache.clear();
         }
     }
 
@@ -119,14 +173,28 @@ class $modify(LevelEditorLayer) {
     void removeSpecial(GameObject* obj) {
         LevelEditorLayer::removeSpecial(obj);
 
-        if (obj->m_objectID == 200 || obj->m_objectID == 201 || obj->m_objectID == 202 || obj->m_objectID == 203 || obj->m_objectID == 1334) {
-            auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->speedPortals;
+        if (isSpeedPortal(obj)) {
+            auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->m_speedPortals;
             speedPortals.erase(std::remove(speedPortals.begin(), speedPortals.end(), obj), speedPortals.end());
-
-            std::sort(speedPortals.begin(), speedPortals.end(), [](const Ref<GameObject>& obj1, const Ref<GameObject>& obj2) {
-                return obj1->getPositionX() < obj2->getPositionX();
-            });
+            sortSpeedPortals(speedPortals);
+            xPosCache.clear();
         }
+    }
+
+    void sortSpeedPortals(std::vector<Ref<GameObject>>& portals) {
+        std::sort(portals.begin(), portals.end(), [](const Ref<GameObject>& obj1, const Ref<GameObject>& obj2) {
+            return obj1->getPositionX() < obj2->getPositionX();
+        });
     }
 };
 
+class $modify(EditorUI) {
+    $override
+    void moveObject(GameObject* p0, CCPoint p1) {
+        EditorUI::moveObject(p0, p1);
+
+        if (isSpeedPortal(p0)) {
+            xPosCache.clear();    
+        }
+    }
+};

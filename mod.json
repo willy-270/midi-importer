@@ -6,9 +6,16 @@
 		"mac": "2.206",
 		"ios": "2.206"
 	},
-	"id": "willy.midi_importer",
-	"name": "midi importer",
+	"id": "willy.midi-importer",
+	"name": "Midi Importer",
 	"version": "v1.0.0",
 	"developer": "willy",
-	"description": ""
+	"description": "",
+	"dependencies": [
+        {
+            "id": "cvolton.level-id-api",
+            "version": "v1.0.0",
+            "importance": "required"
+        }
+    ]
 }

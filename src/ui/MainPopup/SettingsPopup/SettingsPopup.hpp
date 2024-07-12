@@ -9,6 +9,8 @@ protected:
     void onClose(cocos2d::CCObject*) override;
     void onHide(CCObject* sender);
     void onToggle(CCObject* sender);
+    void onShowAll(CCObject* sender);
+    void onHideAll(CCObject* sender);
 public:
     static SettingsPopup* create();
 };
