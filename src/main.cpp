@@ -11,6 +11,7 @@
 #include "main.hpp"
 
 #include <vector>
+#include <array>
 #include <map>
 #include <unordered_map>
 
@@ -33,14 +34,6 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
             12.914 * 30,
             15.6 * 30,
             19.2 * 30
-        };
-
-        const float m_portalXOffsets[5] = {
-            17.5,
-            17,
-            25.5,
-            32.5,
-            34.5
         };
     };
 
@@ -114,7 +107,7 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
 
         for (const auto& portal : m_fields->m_speedPortals) {
             int speedType = getSpeedInt(portal);
-            float changePos = portal->getPositionX() - m_fields->m_portalXOffsets[speedType];
+            float changePos = getNearestXPosition(portal);
 
             float changeTime = (changePos - lastXPos) / m_fields->m_speedMultipliers[currentSpeedType];
             if (time < lastTime + changeTime) {
@@ -131,6 +124,47 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
         float xPos = lastXPos + (time - lastTime) * m_fields->m_speedMultipliers[currentSpeedType];
         xPosCache[time] = xPos;
         return xPos;
+    }
+
+    float getNearestXPosition(GameObject* portal) {
+        cocos2d::CCPoint center = portal->getPosition();
+
+        float height = portal->getScaledContentHeight();
+        float width = portal->getScaledContentWidth();
+
+        std::array<std::pair<float, float>, 4> corners = {
+            std::make_pair(center.x - width / 2, center.y - height / 2), // bottom left
+            std::make_pair(center.x + width / 2, center.y - height / 2), // bottom right
+            std::make_pair(center.x - width / 2, center.y + height / 2), // top left
+            std::make_pair(center.x + width / 2, center.y + height / 2) // top right
+        };
+
+        if (portal->getRotation() != 0.0f) {
+            corners = rotateCorners(corners, center, portal->getRotation());
+        }
+
+        float minX = corners[0].first;
+        for (const auto& corner : corners) {
+            if (corner.first < minX) minX = corner.first;
+        }
+
+        return minX;
+    }
+
+    std::array<std::pair<float, float>, 4> rotateCorners(std::array<std::pair<float, float>, 4> corners, cocos2d::CCPoint center, float rotation) {
+        float angle = CC_DEGREES_TO_RADIANS(rotation);
+        float s = sin(angle);
+        float c = cos(angle);
+
+        for (auto& corner : corners) {
+            float x = corner.first - center.x;
+            float y = corner.second - center.y;
+
+            corner.first = x * c - y * s + center.x;
+            corner.second = x * s + y * c + center.y;
+        }
+
+        return corners;
     }
 
     int getStartSpeedInt() {
@@ -161,7 +195,7 @@ bool isSpeedPortal(GameObject* obj) {
     return obj->m_objectID == 200 || obj->m_objectID == 201 || obj->m_objectID == 202 || obj->m_objectID == 203 || obj->m_objectID == 1334;
 }
 
-void sortSpeedPortals(std::vector<Ref<GameObject>>& portals) {
+void sortSpeedPortalsByXPos(std::vector<Ref<GameObject>>& portals) {
     std::sort(portals.begin(), portals.end(), [](const Ref<GameObject>& obj1, const Ref<GameObject>& obj2) {
         return obj1->getPositionX() < obj2->getPositionX();
     });
@@ -175,7 +209,7 @@ class $modify(LevelEditorLayer) {
         if (isSpeedPortal(obj)) {
             auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->m_speedPortals;
             speedPortals.push_back(obj);
-            sortSpeedPortals(speedPortals);
+            sortSpeedPortalsByXPos(speedPortals);
             xPosCache.clear();
         }
     }
@@ -187,7 +221,7 @@ class $modify(LevelEditorLayer) {
         if (isSpeedPortal(obj)) {
             auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->m_speedPortals;
             speedPortals.erase(std::remove(speedPortals.begin(), speedPortals.end(), obj), speedPortals.end());
-            sortSpeedPortals(speedPortals);
+            sortSpeedPortalsByXPos(speedPortals);
             xPosCache.clear();
         }
     }
@@ -200,8 +234,17 @@ class $modify(EditorUI) {
 
         if (isSpeedPortal(p0)) {
             auto& speedPortals = static_cast<mDrawGridLayer*>(this->m_editorLayer->m_drawGridLayer)->m_fields->m_speedPortals;
-            sortSpeedPortals(speedPortals);
+            sortSpeedPortalsByXPos(speedPortals);
             xPosCache.clear();    
         }
+    }
+
+    $override
+    void deselectAll() {
+        EditorUI::deselectAll();
+
+        auto& speedPortals = static_cast<mDrawGridLayer*>(this->m_editorLayer->m_drawGridLayer)->m_fields->m_speedPortals;
+        sortSpeedPortalsByXPos(speedPortals);
+        xPosCache.clear();
     }
 };
