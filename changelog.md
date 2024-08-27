@@ -1,3 +1,7 @@
+# v1.1.0
+
+ * Added feature for auto building objects along track guidelines.
+
 
 # v1.0.1
 
