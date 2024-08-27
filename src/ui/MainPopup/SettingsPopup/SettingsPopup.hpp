@@ -11,6 +11,9 @@ protected:
     void onToggle(CCObject* sender);
     void onShowAll(CCObject* sender);
     void onHideAll(CCObject* sender);
+    void onPlace(CCObject* sender);
+    void onInfo(CCObject* sender);
+    void performPlace(int trackIdx);
 public:
     static SettingsPopup* create();
 };

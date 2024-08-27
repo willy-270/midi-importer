@@ -14,6 +14,7 @@ struct LevelMidiData {
 };
 
 extern LevelMidiData currentMidiData;
+extern std::vector<std::vector<float>> xPositions;
 
 #endif
 

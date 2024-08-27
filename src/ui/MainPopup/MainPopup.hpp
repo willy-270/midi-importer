@@ -9,12 +9,12 @@ class MainPopup : public geode::Popup<std::string const&> {
 protected:
     InputNode* m_offsetInput;
     cocos2d::CCLabelBMFont* m_currentFileLabel;
-
     LevelMidiData getMidiData(std::string filePath);
     bool setup(std::string const& value) override;
-    void onClose(cocos2d::CCObject*) override;
+
     void onSettings(CCObject* sender);
     void onSelectFile(CCObject* sender);
 public:
+    void onClose(cocos2d::CCObject*) override;
     static MainPopup* create();
 };

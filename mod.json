@@ -1,5 +1,5 @@
 {
-	"geode": "3.2.0",
+	"geode": "3.4.0",
 	"gd": {
 		"win": "2.206",
 		"android": "2.206",
@@ -8,9 +8,13 @@
 	},
 	"id": "willy.midi-importer",
 	"name": "Midi Importer",
-	"version": "v1.0.1",
+	"version": "v1.1.0",
 	"developer": "willy",
-	"description": "",
+	"description": "Generate sync guidelines from midi files and automatically place objects on them.",
+	"repository": "https://github.com/willy-270/midi-importer",
+	"issues": {
+		"info": "dm me on discord: willyy27"
+	},
 	"dependencies": [
         {
             "id": "cvolton.level-id-api",

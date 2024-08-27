@@ -19,15 +19,17 @@ using namespace geode::prelude;
 using namespace smf;
 using json = nlohmann::json;
 
-LevelMidiData currentMidiData; //extern
+LevelMidiData currentMidiData; //extern, used in lots of files
+std::vector<std::vector<float>> xPositions; //extern, for obj placement in SettignsPopup
 
 std::unordered_map<double, float> xPosCache;
-int cachedStartSpeed;
+
 
 class $modify(mDrawGridLayer, DrawGridLayer) {    
     struct Fields {
         std::vector<Ref<GameObject>> m_speedPortals;
         bool m_firstFrame = true;
+        int cachedStartSpeed;
         const float m_speedMultipliers[5] = {
             8.37188 * 30,
             10.3860833 * 30,
@@ -43,6 +45,14 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
 
         if (m_fields->m_firstFrame) {
             loadDataFromJson();
+
+            for (const auto& track : currentMidiData.tracks) {
+                xPositions.push_back(std::vector<float>());
+                for (double noteAttack : track.noteAttacks) {
+                    xPositions.back().push_back(getXPosition(noteAttack + currentMidiData.offset));
+                }
+            }
+
             m_fields->m_firstFrame = false;
         }
 
@@ -77,11 +87,12 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
         std::vector<std::tuple<int, int, int, int>> colors = generateColors(currentMidiData.tracks.size());
 
         for (int i = 0; i < currentMidiData.tracks.size(); i++) {
-            if (!currentMidiData.tracks[i].visible) continue;
-            
             for (double noteAttack : currentMidiData.tracks[i].noteAttacks) {
                 float time = noteAttack + currentMidiData.offset;
                 float xPos = getXPosition(time);
+
+                if (!currentMidiData.tracks[i].visible) continue;
+
                 ccDrawColor4B(
                     std::get<0>(colors[i]), 
                     std::get<1>(colors[i]), 
@@ -97,11 +108,11 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
         int currentSpeedType = getStartSpeedInt();
 
         auto cacheIt = xPosCache.find(time);
-        if (cacheIt != xPosCache.end() && currentSpeedType == cachedStartSpeed) {
+        if (cacheIt != xPosCache.end() && currentSpeedType == m_fields->cachedStartSpeed) {
             return cacheIt->second;
         }
 
-        cachedStartSpeed = currentSpeedType;
+        m_fields->cachedStartSpeed = currentSpeedType;
         float lastTime = 0.0f;
         float lastXPos = 0.0f;
 
@@ -191,6 +202,7 @@ class $modify(mDrawGridLayer, DrawGridLayer) {
     }
 };
 
+
 bool isSpeedPortal(GameObject* obj) {
     return obj->m_objectID == 200 || obj->m_objectID == 201 || obj->m_objectID == 202 || obj->m_objectID == 203 || obj->m_objectID == 1334;
 }
@@ -210,6 +222,7 @@ class $modify(LevelEditorLayer) {
             auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->m_speedPortals;
             speedPortals.push_back(obj);
             sortSpeedPortalsByXPos(speedPortals);
+
             xPosCache.clear();
         }
     }
@@ -222,6 +235,7 @@ class $modify(LevelEditorLayer) {
             auto& speedPortals = static_cast<mDrawGridLayer*>(m_drawGridLayer)->m_fields->m_speedPortals;
             speedPortals.erase(std::remove(speedPortals.begin(), speedPortals.end(), obj), speedPortals.end());
             sortSpeedPortalsByXPos(speedPortals);
+
             xPosCache.clear();
         }
     }
@@ -235,6 +249,7 @@ class $modify(EditorUI) {
         if (isSpeedPortal(p0)) {
             auto& speedPortals = static_cast<mDrawGridLayer*>(this->m_editorLayer->m_drawGridLayer)->m_fields->m_speedPortals;
             sortSpeedPortalsByXPos(speedPortals);
+
             xPosCache.clear();    
         }
     }
@@ -245,6 +260,7 @@ class $modify(EditorUI) {
 
         auto& speedPortals = static_cast<mDrawGridLayer*>(this->m_editorLayer->m_drawGridLayer)->m_fields->m_speedPortals;
         sortSpeedPortalsByXPos(speedPortals);
+
         xPosCache.clear();
     }
 };
