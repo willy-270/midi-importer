@@ -94,7 +94,7 @@ bool MainPopup::setup(std::string const& value) {
     std::string offsetStr = std::to_string(currentMidiData.offset);
     offsetStr.erase(offsetStr.find_last_not_of('0') + 1, std::string::npos);
     offsetStr.erase(offsetStr.find_last_not_of('.') + 1, std::string::npos);
-    if (offsetStr == "0") {
+    if (offsetStr != "0") {
         m_offsetInput->setString(offsetStr);
     }
 
