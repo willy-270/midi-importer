@@ -1,25 +1,33 @@
 {
-	"geode": "3.4.0",
+	"geode": "4.1.2",
 	"gd": {
-		"win": "2.206",
-		"android": "2.206",
-		"mac": "2.206",
-		"ios": "2.206"
+		"win": "2.2074",
+		"android": "2.2074",
+		"mac": "2.2074",
+		"ios": "2.2074"
 	},
 	"id": "willy.midi-importer",
 	"name": "Midi Importer",
-	"version": "v1.1.0",
+	"version": "v1.1.1",
 	"developer": "willy",
-	"description": "Generate sync guidelines from midi files and automatically place objects on them.",
-	"repository": "https://github.com/willy-270/midi-importer",
+	"description": "Generate sync guidelines from midi files.",
 	"issues": {
 		"info": "dm me on discord: willyy27"
+	},
+	"links": {
+		"source": "https://github.com/willy-270/midi-importer"
 	},
 	"dependencies": [
         {
             "id": "cvolton.level-id-api",
-            "version": "v1.0.0",
+            "version": "v1.1.0",
             "importance": "required"
         }
-    ]
+    ],
+	"tags": [
+		"editor",
+		"enhancement",
+		"utility",
+		"music"
+	]
 }

@@ -86,15 +86,20 @@ bool MainPopup::setup(std::string const& value) {
     );
     openFileBtn->setPosition(0, -10);
 
-    m_offsetInput = InputNode::create(150, "Offset", "bigFont.fnt", "1234567890.", 6);
+    m_offsetInput = TextInput::create(150, "Offset", "bigFont.fnt");
+    m_offsetInput->setPosition(0, -50);
+    m_offsetInput->setEnabled(true);
+    m_offsetInput->setCommonFilter(CommonFilter::Float);
+    m_offsetInput->setMaxCharCount(10);
     std::string offsetStr = std::to_string(currentMidiData.offset);
     offsetStr.erase(offsetStr.find_last_not_of('0') + 1, std::string::npos);
     offsetStr.erase(offsetStr.find_last_not_of('.') + 1, std::string::npos);
-    m_offsetInput->setString(offsetStr);
-    m_offsetInput->setPosition(0, -50);
-    m_offsetInput->setEnabled(true);
+    if (offsetStr == "0") {
+        m_offsetInput->setString(offsetStr);
+    }
 
     auto menu = CCMenu::create();
+    menu->setPosition(150.f, 100.f); //whole menu offset after update
     menu->addChild(m_currentFileLabel);
     menu->addChild(settingsBtn);
     menu->addChild(openFileBtn);
@@ -144,7 +149,7 @@ void MainPopup::onClose(cocos2d::CCObject*) {
 
 MainPopup* MainPopup::create() {
     auto ret = new MainPopup();
-    if (ret->init(300.f, 200.f, "")) {
+    if (ret->initAnchored(300.f, 200.f, "")) {
         ret->autorelease();
         return ret;
     }

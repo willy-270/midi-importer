@@ -1,3 +1,7 @@
+# v1.1.1
+
+ * Updated to geode 4.1.2
+
 # v1.1.0
 
  * Added feature for auto building objects along track guidelines.

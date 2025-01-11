@@ -9,7 +9,6 @@
 #include "../../../color_generator/colors.hpp"
 
 //rly weird behaviour when these are in class fields
-
 std::vector<CCMenuItemToggler*> toggleBtns; 
 std::vector<CCMenuItemSpriteExtra*> placeBtns;
 
@@ -20,11 +19,13 @@ bool SettingsPopup::setup(std::string const& value) {
     this->setTitle("Toggle Track Visibility");
 
     mainPopup->setVisible(false);
+    mainPopup->mLevelSettingsLayer->setVisible(false);
     m_bgSprite->setOpacity(0);
 
     if (currentMidiData.tracks.empty()) {
-        auto label = CCLabelBMFont::create(" Open a midi file!", "bigFont.fnt");
+        auto label = CCLabelBMFont::create("Open a midi file!", "bigFont.fnt");
         auto menu = CCMenu::create();
+        menu->setPosition(200.f, 140.f);
         menu->addChild(label);
         m_mainLayer->addChild(menu);
         return true;
@@ -34,10 +35,10 @@ bool SettingsPopup::setup(std::string const& value) {
 
     auto scroll = ScrollLayer::create(ccp(320, 200));
     scroll->setAnchorPoint(ccp(0, 0));
-    scroll->setPosition(CCDirector::get()->getWinSize() / 2 - scroll->getContentSize() / 2 - ccp(0, 10));
+    scroll->setPosition(40, 10);
 
     auto bar = Scrollbar::create(scroll);
-    bar->setPosition(ccp(180, -10) + CCDirector::sharedDirector()->getWinSize() / 2);
+    bar->setPosition(370, 100);
     m_mainLayer->addChild(bar);
 
     auto content = scroll->m_contentLayer;
@@ -90,7 +91,7 @@ bool SettingsPopup::setup(std::string const& value) {
     auto infoSpr = CCSprite::createWithSpriteFrameName("GJ_infoIcon_001.png");
     infoSpr->setScale(0.75f);
     auto infoBtn = CCMenuItemSpriteExtra::create(infoSpr, this, menu_selector(SettingsPopup::onInfo));
-    infoBtn->setPosition(0, 80);
+    infoBtn->setPosition(-120, 108);
 
     auto hideAllSpr = ButtonSprite::create("Hide All");
     hideAllSpr->setScale(0.8f);
@@ -103,10 +104,10 @@ bool SettingsPopup::setup(std::string const& value) {
     showAllBtn->setPosition(80, -130);
 
     auto menu = CCMenu::create();
+    menu->setPosition(200.f, 120.f);
     menu->addChild(infoBtn);
     menu->addChild(hideAllBtn);
     menu->addChild(showAllBtn);
-
 
     scroll->moveToTop();
     m_mainLayer->addChild(scroll);
@@ -244,7 +245,7 @@ void SettingsPopup::performPlace(int trackIdx) {
 void SettingsPopup::onInfo(CCObject* sender) {
     FLAlertLayer::create(
         "Info",
-        "The <cy>toggle boxes</c> toggle the visablity of the corresponding track.\n\n"
+        "The <cy>toggle boxes</c> toggle the visiblity of the corresponding track.\n\n"
         "To use the <cy>plus buttons</c>, select two objects and then click a plus button. "
         "This will duplicate the left-most selected object along all the corresponding track guidelines that fall between your two selected objects.",
         "OK"
@@ -256,12 +257,13 @@ void SettingsPopup::onClose(cocos2d::CCObject*) {
     this->setTouchEnabled(false);
     this->removeFromParentAndCleanup(true);
 
+    mainPopup->mLevelSettingsLayer->setVisible(true);
     mainPopup->onClose(nullptr);
 }
 
 SettingsPopup* SettingsPopup::create() {
     auto ret = new SettingsPopup();
-    if (ret->init(400.f, 250.f, "")) {
+    if (ret->initAnchored(400.f, 250.f, "")) {
         ret->autorelease();
         return ret;
     }
