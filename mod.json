@@ -8,7 +8,7 @@
 	},
 	"id": "willy.midi-importer",
 	"name": "Midi Importer",
-	"version": "v1.1.1",
+	"version": "v1.1.2",
 	"developer": "willy",
 	"description": "Generate sync guidelines from midi files.",
 	"issues": {
