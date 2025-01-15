@@ -126,7 +126,13 @@ void MainPopup::onSelectFile(CCObject* sender) {
             midiFilePath = result->unwrap();
             
             currentMidiData = getMidiData(midiFilePath.string());
-            currentMidiData.offset = std::stof(m_offsetInput->getString());
+
+            auto offset = numFromString<float>(m_offsetInput->getString());
+            if (offset.isOk()) {
+                currentMidiData.offset = offset.unwrap();
+            } else {
+                currentMidiData.offset = 0.f;
+            }
 
             currentMidiData.fileName = midiFilePath.filename().string();
             m_currentFileLabel->setString(("Current file: " + currentMidiData.fileName).c_str());
@@ -135,11 +141,11 @@ void MainPopup::onSelectFile(CCObject* sender) {
 }
 
 void MainPopup::onClose(cocos2d::CCObject*) {
-    std::string offsetStr = m_offsetInput->getString();
-    if (offsetStr.empty()) {
-        currentMidiData.offset = 0.f;
+    auto offset = numFromString<float>(m_offsetInput->getString());
+    if (offset.isOk()) {
+        currentMidiData.offset = offset.unwrap();
     } else {
-        currentMidiData.offset = std::stof(offsetStr);
+        currentMidiData.offset = 0.f;
     }
 
     this->setKeypadEnabled(false);
