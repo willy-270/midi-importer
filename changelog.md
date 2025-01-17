@@ -1,3 +1,7 @@
+# v1.1.4
+
+ * bug fix
+  
 # v1.1.3
 
  * fixed another stupid bug with offsets 🥶
