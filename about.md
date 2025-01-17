@@ -4,4 +4,4 @@ Generate sync guidelines from midi files and automatically place objects on them
 
 ## Mac and Android Users:
 
-This mod will work, however for now the ui for toggling tracks is broekn and certain parts are uninteractable.
+This mod will work, however for now the ui for toggling tracks is broken and certain parts are uninteractable.
